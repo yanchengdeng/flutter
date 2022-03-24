@@ -92,6 +92,28 @@ class GtkCodeGenerator extends PlatformCodeGenerator {
   }
   final Map<String, List<String>> _lockBitMapping;
 
+  String get _layoutGoals {
+    final OutputLines<int> lines = OutputLines<int>('GTK layout goals');
+    final StringBuffer modifierKeyMap = StringBuffer();
+    final Iterable<LogicalKeyEntry> asciiEntries = logicalData.entries.where(
+        (LogicalKeyEntry entry) => entry.value <= 128);
+    for (final LogicalKeyEntry logicalEntry in asciiEntries) {
+      final int value = logicalEntry.value;
+      final PhysicalKeyEntry? physicalEntry = keyData.tryEntryByName(logicalEntry.name);
+      if (physicalEntry == null) {
+        continue;
+      }
+      final bool mandatory = (value >= '0'.codeUnitAt(0) && value <= '9'.codeUnitAt(0))
+                          || (value >= 'a'.codeUnitAt(0) && value <= 'z'.codeUnitAt(0));
+      lines.add(value,
+          '    LayoutGoal{${toHex(physicalEntry.linuxScanCode, digits: 2)}, '
+          '${toHex(value, digits: 2)}, '
+          '${mandatory ? 'true}, ' : 'false},'}'
+          '  // ${logicalEntry.name}');
+    }
+    return lines.sortedJoin().trimRight();
+  }
+
   /// This generates the mask values for the part of a key code that defines its plane.
   String get _maskConstants {
     final StringBuffer buffer = StringBuffer();
@@ -121,6 +143,7 @@ class GtkCodeGenerator extends PlatformCodeGenerator {
       'GTK_MODIFIER_BIT_MAP': _gtkModifierBitMap,
       'GTK_MODE_BIT_MAP': _gtkModeBitMap,
       'MASK_CONSTANTS': _maskConstants,
+      'LAYOUT_GOALS': _layoutGoals,
     };
   }
 }
